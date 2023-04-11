@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -26,11 +27,10 @@ var (
 type mekanoBilling struct {
 	xlsx   *excelize.File
 	extras *excelize.File
-	db     string
 }
 
-func NewMekanoBilling(xlsx, extras *excelize.File, db string) *mekanoBilling {
-	return &mekanoBilling{xlsx, extras, db}
+func NewMekanoBilling(ctx context.Context, xlsx, extras *excelize.File) *mekanoBilling {
+	return &mekanoBilling{xlsx, extras}
 }
 
 func (mb *mekanoBilling) GenerateFile() error {
@@ -109,7 +109,7 @@ func (mb *mekanoBilling) GenerateFile() error {
 					CentroCostos:  utils.CostCenter[unidecode.Unidecode(bRow[17])],
 					Nota:          "FACTURA ELECTRÓNICA DE VENTA",
 					Debito:        "0",
-					Credito:       fmt.Sprintf("%f", math.Ceil(montoIva)),
+					Credito:       fmt.Sprintf("%f", montoIva),
 					Base:          fmt.Sprintf("%f", montoBaseFinal),
 					Aplica:        "",
 					TipoAnexo:     "",
@@ -149,12 +149,12 @@ func (mb *mekanoBilling) GenerateFile() error {
 					NombreCentro:  bRow[17],
 					Interface:     utils.CurrentTimeForMekanoInterfaceField,
 				}
-
+				billingResult = append(billingResult, billingNormal, billingIva, billingCxC)
 			} else {
 				splitBillingItems := strings.Split(bRow[21], ",")
 				for _, item := range splitBillingItems {
 					for _, itemIva := range itemsIvaFile[1:] {
-						if itemIva[1] == unidecode.Unidecode(strings.TrimSpace(item)) && itemIva[0] == bRow[0] {
+						if itemIva[1] == strings.TrimSpace(item) && itemIva[0] == bRow[0] {
 							itemIvaBase, _ := strconv.ParseFloat(itemIva[2], 64)
 							billingNormalPlus = mekano.MekanoData{
 								Tipo:          "FVE",
@@ -167,7 +167,7 @@ func (mb *mekanoBilling) GenerateFile() error {
 								CentroCostos:  utils.CostCenter[unidecode.Unidecode(bRow[17])],
 								Nota:          "FACTURA ELECTRÓNICA DE VENTA",
 								Debito:        "0",
-								Credito:       fmt.Sprintf("%f", math.Ceil(itemIvaBase)),
+								Credito:       fmt.Sprintf("%f", math.Ceil(itemIvaBase-1)),
 								Base:          "0",
 								Aplica:        "",
 								TipoAnexo:     "",
@@ -196,7 +196,7 @@ func (mb *mekanoBilling) GenerateFile() error {
 					CentroCostos:  utils.CostCenter[unidecode.Unidecode(bRow[17])],
 					Nota:          "FACTURA ELECTRÓNICA DE VENTA",
 					Debito:        "0",
-					Credito:       fmt.Sprintf("%f", math.Ceil(montoIva)),
+					Credito:       fmt.Sprintf("%f", montoIva),
 					Base:          fmt.Sprintf("%f", montoBaseFinal),
 					Aplica:        "",
 					TipoAnexo:     "",
@@ -236,7 +236,7 @@ func (mb *mekanoBilling) GenerateFile() error {
 					NombreCentro:  bRow[17],
 					Interface:     utils.CurrentTimeForMekanoInterfaceField,
 				}
-				billingResult = append(billingResult, billingNormal, billingIva, billingCxC, billingIvaPlus, billingCxCPlus)
+				billingResult = append(billingResult, billingIvaPlus, billingCxCPlus)
 			}
 
 		}(bRow)
@@ -244,6 +244,7 @@ func (mb *mekanoBilling) GenerateFile() error {
 	}
 
 	utils.FileExporter(billingResult)
+	mekano.BillingStatistics(billingResult)
 
 	return nil
 }

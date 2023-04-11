@@ -1,7 +1,8 @@
 package repository
 
 import (
-	"log"
+	"context"
+	"database/sql"
 	"strconv"
 	"sync"
 
@@ -11,21 +12,29 @@ import (
 )
 
 type mekanoPayment struct {
+	ctx  context.Context
 	xlsx *excelize.File
-	db   string
+	db   *sql.DB
 }
 
-func NewMekanoPayment(excelFile *excelize.File, db string) *mekanoPayment {
-	return &mekanoPayment{excelFile, db}
+func NewMekanoPayment(ctx context.Context, excelFile *excelize.File, db *sql.DB) *mekanoPayment {
+	return &mekanoPayment{ctx, excelFile, db}
 }
 
 func (mp *mekanoPayment) GenerateFile() error {
 	var wg sync.WaitGroup
 	var paymentResult []mekano.MekanoData
+	var finalConsecutive int
+
+	database := NewDatabaseRepository(mp.ctx, mp.db)
+	consecutive, err := database.GetConsecutive()
+	if err != nil {
+		return err
+	}
 
 	paymentFile, err := mp.xlsx.GetRows(mp.xlsx.GetSheetName(0))
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 
 	for i, row := range paymentFile[1:] {
@@ -33,10 +42,11 @@ func (mp *mekanoPayment) GenerateFile() error {
 		wg.Add(1)
 		go func(row []string) {
 			defer wg.Done()
+			finalConsecutive = rowCount + consecutive
 			paymentData := mekano.MekanoData{
 				Tipo:          "RC",
 				Prefijo:       "_",
-				Numero:        strconv.Itoa(rowCount), //FIXME: dababase consecutive + i
+				Numero:        strconv.Itoa(finalConsecutive), //FIXME: dababase consecutive + i
 				Secuencia:     "",
 				Fecha:         row[4],
 				Cuenta:        "13050501",
@@ -61,7 +71,7 @@ func (mp *mekanoPayment) GenerateFile() error {
 			paymentData2 := mekano.MekanoData{
 				Tipo:          "RC",
 				Prefijo:       "_",
-				Numero:        strconv.Itoa(rowCount), //FIXME: dababase consecutive + i
+				Numero:        strconv.Itoa(finalConsecutive), //FIXME: dababase consecutive + i
 				Secuencia:     "",
 				Fecha:         row[4],
 				Cuenta:        utils.Cashier[row[9]],
@@ -91,8 +101,12 @@ func (mp *mekanoPayment) GenerateFile() error {
 		wg.Wait()
 	}
 
-	utils.FileExporter(paymentResult)
-	mekano.ShowStatistics(paymentResult)
+	err = utils.FileExporter(paymentResult)
+	if err != nil {
+		return err
+	}
+	mekano.PaymentStatistics(paymentResult, consecutive, finalConsecutive)
+	database.CreateConsecutive(finalConsecutive)
 
 	return nil
 }
