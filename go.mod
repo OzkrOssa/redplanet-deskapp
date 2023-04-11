@@ -3,6 +3,7 @@ module github.com/OzkrOssa/redplanet-deskapp
 go 1.19
 
 require (
+	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/mozillazg/go-unidecode v0.2.0 // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
