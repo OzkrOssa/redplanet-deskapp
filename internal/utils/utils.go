@@ -141,6 +141,7 @@ var Account = map[string]string{
 	"SUSCRIPCION":                                  "41459034",
 	"PLAN FINCA BASICO":                            "41457004",
 	"COMERCIAL BASICO RURAL":                       "41457012",
+	"COMERCIAL BÁSICO RURAL":                       "41457012",
 	"PLAN MASTER":                                  "41457055",
 	"PLAN SENIOR GRAVADO":                          "41457056",
 }
@@ -153,7 +154,7 @@ var Municipalities = map[string]string{
 
 // Create a file in C:/APOLOSOFT/MEKANO_REMOTO/INTERFACES/
 func FileExporter(d []mekano.MekanoData) error {
-	text, err := os.Create(filepath.Join("/home/oscar/Documentos/", "CONTABLE.txt"))
+	text, err := os.Create(filepath.Join("C:/APOLOSOFT/MEKANO_REMOTO/INTERFACES", "CONTABLE.txt"))
 	if err != nil {
 		return err
 	}
