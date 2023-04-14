@@ -28,39 +28,42 @@ var (
 	davivienda  int = 0
 	susuerte    int = 0
 	payU        int = 0
+	total       int = 0
 )
 
 func PaymentStatistics(data []MekanoData, initialRC, lastRC int) {
 
 	for _, d := range data {
-		account, err := strconv.Atoi(d.Cuenta)
+		debito, err := strconv.Atoi(d.Debito)
+		total += debito
 		if err != nil {
 			log.Println(err)
 		}
 		switch d.Cuenta {
 		case "11050501": //Efectivo
-			efectivo += account
+			efectivo += debito
 		case "11200501": //Bancolombia
-			bancolombia += account
+			bancolombia += debito
 		case "11200510": //Davivienda
-			davivienda += account
+			davivienda += debito
 		case "13452501": //Pay U
-			susuerte += account
+			susuerte += debito
 		case "13452505": //Susuerte
-			payU += account
+			payU += debito
 		}
 	}
 
 	s := paymentStatistics{
-		RangoRC:     fmt.Sprintf("%d-%d", initialRC, lastRC),
+		RangoRC:     fmt.Sprintf("%d-%d", initialRC+1, lastRC),
 		Efectivo:    efectivo,
 		Bancolombia: bancolombia,
 		Davivienda:  davivienda,
 		Susuerte:    susuerte,
 		PayU:        payU,
+		Total:       total,
 	}
 
-	result, err := json.Marshal(s)
+	result, err := json.MarshalIndent(s, "", "    ")
 	if err != nil {
 		log.Println(err)
 	}
@@ -89,7 +92,7 @@ func BillingStatistics(data []MekanoData) {
 		Base:    b,
 	}
 
-	result, err := json.Marshal(bs)
+	result, err := json.MarshalIndent(bs, "", "    ")
 	if err != nil {
 		log.Println(err)
 	}
